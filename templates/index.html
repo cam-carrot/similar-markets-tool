@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Analysis Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center text-blue-600">Market Analysis Tool</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="bg-{{ 'red' if category == 'error' else 'yellow' }}-100 border border-{{ 'red' if category == 'error' else 'yellow' }}-400 text-{{ 'red' if category == 'error' else 'yellow' }}-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <span class="block sm:inline">{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form id="analysisForm" action="{{ url_for('analyze') }}" method="post" class="max-w-md mx-auto bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="city">
+                    City
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="city" name="city" type="text" placeholder="Enter city name" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="state">
+                    State
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="state" name="state" type="text" placeholder="Enter state (e.g., MD)" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="radius">
+                    Radius (miles): <span id="radiusValue">100</span>
+                </label>
+                <input class="w-full" id="radius" name="radius" type="range" min="50" max="500" value="100" step="10">
+            </div>
+            <div class="flex items-center justify-between">
+                <button id="submitBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                    Analyze Market
+                </button>
+            </div>
+        </form>
+        
+        <div id="loadingIndicator" class="hidden text-center">
+            <p class="text-lg font-semibold">Analyzing... Please wait.</p>
+            <div class="mt-4">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const slider = document.getElementById('radius');
+        const output = document.getElementById('radiusValue');
+        slider.oninput = function() {
+            output.innerHTML = this.value;
+        }
+
+        document.getElementById('analysisForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent the default form submission
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            
+            // Submit the form using fetch API
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this),
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url; // Handle redirect
+                } else {
+                    return response.text();
+                }
+            })
+            .then(html => {
+                if (html) {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            })
+            .finally(() => {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('loadingIndicator').classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

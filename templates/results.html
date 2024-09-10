@@ -83,6 +83,14 @@
                             <p><span class="font-semibold">Opportunity Score:</span></p>
                             <div class="star-rating" data-rating="{{ city.opportunity_score * 5 }}"></div>
                         </div>
+                        <!-- Add tags section -->
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            {% for tag in city.tags %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ market_tags[tag].color }} bg-opacity-10">
+                                {{ market_tags[tag].icon }} {{ market_tags[tag].name }}
+                            </span>
+                            {% endfor %}
+                        </div>
                     </div>
                     {% endfor %}
                 </div>

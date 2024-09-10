@@ -5,6 +5,38 @@ from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
 import logging
 
+# Define MARKET_TAGS at the module level
+MARKET_TAGS = {
+    "high_growth_potential": {
+        "name": "High Growth Potential",
+        "description": "Market shows significant room for network expansion",
+        "condition": lambda row: row['growth_potential'] > 0.5,
+        "icon": "📈",
+        "color": "text-green-600"
+    },
+    "efficiency_star": {
+        "name": "Efficiency Star",
+        "description": "Exceptional lead generation performance",
+        "condition": lambda row: row['performance_efficiency'] > 0.8,
+        "icon": "⭐",
+        "color": "text-blue-600"
+    },
+    "low_penetration": {
+        "name": "Low Penetration",
+        "description": "Limited network presence in the market",
+        "condition": lambda row: row['network_penetration'] < row['avg_network_penetration'],
+        "icon": "🌱",
+        "color": "text-indigo-600"
+    },
+    "very_similar": {
+        "name": "Very Similar",
+        "description": "Highly similar to the target market",
+        "condition": lambda row: row['norm_similarity'] > 0.5,
+        "icon": "🎯",
+        "color": "text-purple-600"
+    }
+}
+
 class MarketAnalysisEngine:
     def __init__(self, city_data_path, ga4_data_path):
         # Setting up logging
@@ -263,5 +295,15 @@ class MarketAnalysisEngine:
         else:
             df['opportunity_category'] = pd.qcut(df['opportunity_score'], q=3, labels=['Low', 'Average', 'High'])
 
-        self.logger.info("Opportunity score calculation completed successfully")
+        # Calculate average network penetration
+        avg_network_penetration = df['network_penetration'].mean()
+        df['avg_network_penetration'] = avg_network_penetration  # Add this to each row for the lambda function
+
+        # Assign tags to each city
+        def assign_tags(row):
+            return [tag for tag, data in MARKET_TAGS.items() if data['condition'](row)]
+
+        df['tags'] = df.apply(assign_tags, axis=1)
+
+        self.logger.info("Opportunity score calculation and tag assignment completed successfully")
         return df, std_ga4_columns

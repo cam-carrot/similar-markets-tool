@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, flash, jsonify
 import folium
-from engine import MarketAnalysisEngine
+from engine import MarketAnalysisEngine, MARKET_TAGS  # Import MARKET_TAGS from engine.py
 import logging
 import pandas as pd
 
@@ -69,7 +69,8 @@ def analyze():
                                target_state=target_state,
                                target_data=target_data,
                                similar_cities=similar_cities_list,
-                               map_html=map_html)
+                               map_html=map_html,
+                               market_tags=MARKET_TAGS)  # Pass MARKET_TAGS to the template
     except Exception as e:
         app.logger.error(f"Error in analyze route: {str(e)}", exc_info=True)
         return render_template('error.html', error_message=str(e))

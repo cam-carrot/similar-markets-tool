@@ -58,12 +58,13 @@
         <div class="bg-white shadow-lg rounded-xl p-8 mb-12 transition duration-300 ease-in-out hover:shadow-xl">
             <h2 class="text-2xl font-bold mb-6 text-indigo-800">Similar Markets</h2>
             
+            {% for category in ['High', 'Average'] %}
             <div class="mb-8">
-                <h3 class="text-xl font-bold mb-4 text-green-600">High Opportunity Markets</h3>
+                <h3 class="text-xl font-bold mb-4 {% if category == 'High' %}text-green-600{% else %}text-orange-600{% endif %}">{{ category }} Opportunity Markets</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for city in similar_cities if city.opportunity_category == 'High' %}
-                    <div class="bg-green-50 rounded-lg p-6 shadow-md hover:shadow-lg transition duration-300">
-                        <h4 class="font-bold text-lg mb-3 text-green-800">{{ city.city }}</h4>
+                    {% for city in similar_cities if city.opportunity_category == category %}
+                    <div class="{% if category == 'High' %}bg-green-50{% else %}bg-orange-50{% endif %} rounded-lg p-6 shadow-md hover:shadow-lg transition duration-300">
+                        <h4 class="font-bold text-lg mb-3 {% if category == 'High' %}text-green-800{% else %}text-orange-800{% endif %}">{{ city.city }}, {{ city.state_id }}</h4>
                         <div class="grid grid-cols-2 gap-2 text-sm">
                             <div>
                                 <p><span class="font-semibold">Population:</span> {{ "{:,}".format(city.population_proper|int) }}</p>
@@ -86,35 +87,7 @@
                     {% endfor %}
                 </div>
             </div>
-            
-            <div>
-                <h3 class="text-xl font-bold mb-4 text-yellow-600">Average Opportunity Markets</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for city in similar_cities if city.opportunity_category == 'Average' %}
-                    <div class="bg-yellow-50 rounded-lg p-6 shadow-md hover:shadow-lg transition duration-300">
-                        <h4 class="font-bold text-lg mb-3 text-yellow-800">{{ city.city }}</h4>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                                <p><span class="font-semibold">Population:</span> {{ "{:,}".format(city.population_proper|int) }}</p>
-                                <p><span class="font-semibold">Housing Units:</span> {{ "{:,}".format(city.housing_units|int) }}</p>
-                                <p><span class="font-semibold">Home Value:</span> ${{ "{:,}".format(city.home_value|int) }}</p>
-                            </div>
-                            <div>
-                                <p><span class="font-semibold">Organic CVR:</span> {{ "%.2f%%" | format(city.cvr_org * 100) if city.cvr_org is not none and city.cvr_org > 0 else 'N/A' }}</p>
-                                <p><span class="font-semibold">Organic Leads:</span> {{ "{:,}".format(city.leads_org|int) if city.leads_org is not none and city.leads_org > 0 else 'N/A' }}</p>
-                                <p><span class="font-semibold">Paid CVR:</span> {{ "%.2f%%" | format(city.cvr_paid * 100) if city.cvr_paid is not none and city.cvr_paid > 0 else 'N/A' }}</p>
-                                <p><span class="font-semibold">Paid Leads:</span> {{ "{:,}".format(city.leads_paid|int) if city.leads_paid is not none and city.leads_paid > 0 else 'N/A' }}</p>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <p><span class="font-semibold">Distance:</span> {{ "%.1f" | format(city.distance_to_target) }} miles</p>
-                            <p><span class="font-semibold">Opportunity Score:</span></p>
-                            <div class="star-rating" data-rating="{{ city.opportunity_score * 5 }}"></div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            {% endfor %}
         </div>
 
         <div class="mb-12 text-center">

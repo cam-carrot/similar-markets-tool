@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, flash, jsonify
 import folium
 from engine import MarketAnalysisEngine
 import logging
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -36,7 +37,7 @@ def create_map(similar_cities, target_city, target_state):
             icon=folium.Icon(color=color, icon='info-sign')
         ).add_to(m)
 
-    return m
+    return m._repr_html_()
 
 @app.route('/')
 def index():
@@ -45,52 +46,33 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    logger.info("Analyze route accessed")
-    logger.info(f"Form data: {request.form}")
-
     try:
-        target_city = request.form['city'].lower().strip()
-        target_state = request.form['state'].lower().strip()
-        radius_miles = int(request.form['radius'])
-
-        logger.info(f"Analyzing: {target_city}, {target_state} with radius {radius_miles}")
-
-        # Define feature weights
-        feature_weights = {
-            'population': 5,
-            'population_proper': 5,
-            'housing_units': 5,
-            'income_household_median': 2,
-            'home_value': 2.5,
-            'education_college_or_above': 2,
-            'age_median': 1.5
-            # Add more weights as needed
-        }
-
-        # Pass feature_weights to find_similar_cities
-        similar_cities = engine.find_similar_cities(target_city, target_state, radius_miles, feature_weights=feature_weights)
-        logger.info(f"Similar cities found: {len(similar_cities)}")
-
-        target_city_state = f"{target_city}, {target_state}"
-        if target_city_state not in similar_cities.index:
-            logger.error(f"Target city {target_city_state} not found in similar cities after analysis")
-            raise ValueError(f"Target city {target_city_state} not found in similar cities after analysis")
-
-        target_data = similar_cities.loc[target_city_state]
-        logger.info(f"Target data: {target_data.to_dict()}")
-
-        map_html = create_map(similar_cities, target_city, target_state)._repr_html_()
-        logger.info("Map created successfully")
-
-        return render_template('results.html', 
-                               map_html=map_html, 
-                               target_city=target_city.title(),
-                               target_state=target_state.upper(),
+        target_city = request.form['city']
+        target_state = request.form['state']
+        
+        app.logger.info(f"Analyzing market for {target_city}, {target_state}")
+        
+        similar_cities = engine.find_similar_cities(target_city, target_state)
+        app.logger.info(f"Found {len(similar_cities)} similar cities")
+        
+        # Convert DataFrame to list of dictionaries
+        similar_cities_list = similar_cities.to_dict('records')
+        app.logger.debug(f"Similar cities data: {similar_cities_list}")
+        
+        target_data = similar_cities.loc[f"{target_city}, {target_state}".lower()].to_dict()
+        app.logger.debug(f"Target data: {target_data}")
+        
+        map_html = create_map(similar_cities, target_city, target_state)
+        
+        return render_template('results.html',
+                               target_city=target_city,
+                               target_state=target_state,
                                target_data=target_data,
-                               similar_cities=similar_cities)
+                               similar_cities=similar_cities_list,
+                               map_html=map_html)
     except Exception as e:
-        logger.error(f"Error in analyze route: {str(e)}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Error in analyze route: {str(e)}", exc_info=True)
+        return render_template('error.html', error_message=str(e))
 
 @app.errorhandler(404)
 def page_not_found(e):

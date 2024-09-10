@@ -25,8 +25,34 @@ class MarketAnalysisEngine:
         
         # Loading and standardizing GA4 data
         self.ga4_data = pd.read_csv(ga4_data_path, low_memory=False)
+        self.logger.info(f"GA4 data columns after loading: {self.ga4_data.columns.tolist()}")
+        self.logger.info(f"GA4 data sample:\n{self.ga4_data.head().to_string()}")
+        
         self.standardize_city_names(self.ga4_data)
+        
+        # Investigate and handle the unique_sites column
+        if 'unique_sites' in self.ga4_data.columns:
+            self.logger.info(f"unique_sites column data types: {self.ga4_data['unique_sites'].dtype}")
+            self.logger.info(f"unique_sites sample values: {self.ga4_data['unique_sites'].head().tolist()}")
+            
+            # Try to convert to numeric first
+            self.ga4_data['unique_sites'] = pd.to_numeric(self.ga4_data['unique_sites'], errors='coerce')
+            
+            # Check for any non-numeric values
+            non_numeric = self.ga4_data['unique_sites'].isna().sum()
+            if non_numeric > 0:
+                self.logger.warning(f"Found {non_numeric} non-numeric values in unique_sites")
+            
+            # Fill NaN values with 0 and convert to int
+            self.ga4_data['unique_sites'] = self.ga4_data['unique_sites'].fillna(0).astype(int)
+            
+            self.logger.info(f"unique_sites value counts: {self.ga4_data['unique_sites'].value_counts().to_dict()}")
+        else:
+            self.logger.error("'unique_sites' column not found in GA4 data")
+            raise ValueError("'unique_sites' column is missing from GA4 data")
+        
         self.logger.info(f"Loaded GA4 data. Shape: {self.ga4_data.shape}")
+        self.logger.info(f"GA4 data columns after processing: {self.ga4_data.columns.tolist()}")
         
         self.prepare_data()
 
@@ -51,6 +77,10 @@ class MarketAnalysisEngine:
         if 'city_state' not in self.ga4_data.columns:
             self.logger.error("GA4 data does not have a city_state column")
             raise ValueError("GA4 data must have a city_state column")
+        
+        self.logger.info(f"GA4 data columns before setting index: {self.ga4_data.columns.tolist()}")
+        self.ga4_data.set_index('city_state', inplace=True)
+        self.logger.info(f"GA4 data columns after setting index: {self.ga4_data.columns.tolist()}")
 
     def find_similar_cities(self, target_city, target_state, radius_miles=100, n_similar=15, feature_weights=None):
         target_city_state = f"{target_city}, {target_state}".lower().strip()
@@ -105,21 +135,20 @@ class MarketAnalysisEngine:
         )
         similar_cities['similarity_score'] = np.where(similar_cities.index == target_city_state, 0, distances[0])
 
-        ga4_columns = ['users_org', 'cvr_org', 'leads_cvr', 'users_paid', 'cvr_paid', 'leads_paid']
+        ga4_columns = ['users_org', 'cvr_org', 'leads_org', 'users_paid', 'cvr_paid', 'leads_paid', 'unique_sites']
         self.logger.info(f"GA4 data shape before merge: {self.ga4_data.shape}")
         self.logger.info(f"Similar cities shape before merge: {similar_cities.shape}")
         
         self.logger.info(f"Sample of GA4 data:\n{self.ga4_data.head().to_string()}")
         self.logger.info(f"Sample of similar cities before merge:\n{similar_cities.head().to_string()}")
         
-        similar_cities = similar_cities.merge(self.ga4_data[['city_state'] + ga4_columns], left_index=True, right_on='city_state', how='left')
+        similar_cities = similar_cities.merge(self.ga4_data[ga4_columns], left_index=True, right_index=True, how='left')
         self.logger.info(f"Similar cities shape after merge: {similar_cities.shape}")
         
         for col in ga4_columns:
             nan_count = similar_cities[col].isna().sum()
             self.logger.info(f"NaN count in {col} after merge: {nan_count}")
         
-        similar_cities.set_index('city_state', inplace=True)
         self.logger.info(f"Columns in similar_cities after merge: {similar_cities.columns.tolist()}")
         
         self.logger.info(f"Sample of similar cities after merge:\n{similar_cities.head().to_string()}")
@@ -158,66 +187,75 @@ class MarketAnalysisEngine:
 
     def calculate_opportunity_score(self, df, target_city_state):
         self.logger.info(f"Calculating opportunity score. DataFrame shape: {df.shape}")
+        self.logger.info(f"Columns in DataFrame: {df.columns.tolist()}")
         
-        if df.empty:
-            self.logger.error("DataFrame is empty in calculate_opportunity_score")
-            raise ValueError("No data available to calculate opportunity score")
-
-        ga4_columns = ['users_org', 'cvr_org', 'leads_cvr', 'users_paid', 'cvr_paid', 'leads_paid']
+        # Check if 'unique_sites' column exists
+        if 'unique_sites' not in df.columns:
+            self.logger.warning("'unique_sites' column not found. Setting to default value.")
+            df['unique_sites'] = 1  # or another appropriate default value
         
-        missing_columns = [col for col in ga4_columns if col not in df.columns]
-        if missing_columns:
-            self.logger.error(f"Missing GA4 columns: {missing_columns}")
-            raise ValueError(f"Missing GA4 columns: {missing_columns}")
-
-        for col in ga4_columns:
-            nan_count = df[col].isna().sum()
-            self.logger.info(f"NaN count in {col}: {nan_count}")
-
+        # Log unique_sites values
+        self.logger.info(f"unique_sites value counts: {df['unique_sites'].value_counts().to_dict()}")
+        
+        # Existing code for GA4 data standardization
+        ga4_columns = ['users_org', 'cvr_org', 'leads_org', 'users_paid', 'cvr_paid', 'leads_paid']
         scaler = StandardScaler()
         std_ga4_columns = [f'std_{col}' for col in ga4_columns]
         df[std_ga4_columns] = scaler.fit_transform(df[ga4_columns].fillna(df[ga4_columns].mean()))
 
+        # Existing performance difference calculation
         avg_performance = df[df.index != target_city_state][std_ga4_columns].mean()
         df['performance_diff'] = (df[std_ga4_columns] - avg_performance).mean(axis=1)
-        
-        if 'similarity_score' not in df.columns:
-            self.logger.error("'similarity_score' column not found in DataFrame")
-            raise ValueError("'similarity_score' column not found in DataFrame")
-        
+
+        # New calculations
+        df['network_penetration'] = df['unique_sites'] / df['housing_units']
+        df['engagement_diversity'] = df['unique_sites'] / (df['users_org'] + df['users_paid'])
+        avg_penetration = df['network_penetration'].mean()
+        df['growth_potential'] = (avg_penetration - df['network_penetration']) / avg_penetration
+        df['performance_efficiency'] = (df['leads_org'] + df['leads_paid']) / df['unique_sites']
+        df['saturation_risk'] = 1 - (1 / (1 + np.exp(-(df['unique_sites'] - df['housing_units']/1000))))
+
+        # Normalize similarity score (existing code)
         if df['similarity_score'].isna().all():
             self.logger.warning("All similarity scores are NaN. Setting norm_similarity to 1.")
             df['norm_similarity'] = 1
         else:
             df['norm_similarity'] = 1 - (df['similarity_score'] - df['similarity_score'].min()) / (df['similarity_score'].max() - df['similarity_score'].min())
 
-        df['raw_opportunity_score'] = df['norm_similarity'] * (1 - df['performance_diff'])
+        # Calculate the raw opportunity score
+        df['raw_opportunity_score'] = (
+            0.3 * df['norm_similarity'] +
+            0.2 * (1 - df['performance_diff']) +
+            0.1 * df['network_penetration'] +
+            0.1 * df['engagement_diversity'] +
+            0.1 * df['growth_potential'] +
+            0.1 * df['performance_efficiency'] +
+            0.1 * (1 - df['saturation_risk'])
+        )
+
+        # New approach: Use logarithmic scaling based on housing units
+        # Add a small constant (1) to avoid log(0) for any zero values
+        df['log_housing_units'] = np.log(df['housing_units'] + 1)
         
-        if 'housing_units' not in df.columns:
-            self.logger.error("'housing_units' column not found in DataFrame")
-            raise ValueError("'housing_units' column not found in DataFrame")
+        # Normalize the log_housing_units to a 0-1 scale
+        min_log_housing = df['log_housing_units'].min()
+        max_log_housing = df['log_housing_units'].max()
+        df['normalized_log_housing'] = (df['log_housing_units'] - min_log_housing) / (max_log_housing - min_log_housing)
         
-        zero_housing = (df['housing_units'] == 0).sum()
-        if zero_housing > 0:
-            self.logger.warning(f"{zero_housing} cities have zero housing units. Replacing with 1 to avoid division by zero.")
-            df['housing_units'] = df['housing_units'].replace(0, 1)
-        
-        df['opportunity_score'] = df['raw_opportunity_score'] / df['housing_units']
-        
-        if df['opportunity_score'].isna().all():
-            self.logger.warning("All opportunity scores are NaN. Setting to a constant value.")
-            df['opportunity_score'] = 1
+        # Calculate the final opportunity score
+        # This will increase with both raw_opportunity_score and market size
+        df['opportunity_score'] = df['raw_opportunity_score'] * (1 + df['normalized_log_housing'])
+
+        # Normalize the final opportunity score to 0-1 range
+        min_score = df['opportunity_score'].min()
+        max_score = df['opportunity_score'].max()
+        if min_score != max_score:
+            df['opportunity_score'] = (df['opportunity_score'] - min_score) / (max_score - min_score)
         else:
-            min_score = df['opportunity_score'].min()
-            max_score = df['opportunity_score'].max()
-            if min_score == max_score:
-                self.logger.warning("All non-NaN opportunity scores are the same. Setting to a constant value.")
-                df['opportunity_score'] = 1
-            else:
-                df['opportunity_score'] = (df['opportunity_score'] - min_score) / (max_score - min_score)
+            self.logger.warning("All opportunity scores are the same. Setting to a constant value.")
+            df['opportunity_score'] = 1
 
-        self.logger.info(f"Opportunity score statistics: min={df['opportunity_score'].min()}, max={df['opportunity_score'].max()}, mean={df['opportunity_score'].mean()}")
-
+        # Categorize the opportunity scores
         unique_scores = df['opportunity_score'].nunique()
         if unique_scores < 3:
             self.logger.warning(f"Not enough unique opportunity scores ({unique_scores}) for qcut. Using manual categorization.")

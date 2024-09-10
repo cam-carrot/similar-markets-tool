@@ -1,117 +1,205 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="bg-gray-100">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Market Analysis Results</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        .gauge-chart {
+            width: 120px;
+            height: 120px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8 text-center text-blue-600">Market Analysis Results</h1>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-white shadow-md rounded p-6">
-                <h2 class="text-xl font-semibold mb-4">Target Market: {{ target_city }}, {{ target_state }}</h2>
+<body class="font-sans antialiased text-gray-800">
+    <div class="container mx-auto px-4 py-12">
+        <h1 class="text-4xl font-extrabold mb-12 text-center text-indigo-600">Market Analysis Results</h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div class="bg-white shadow-lg rounded-xl p-8 transition duration-300 ease-in-out hover:shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-indigo-800">Target Market: {{ target_city }}, {{ target_state }}</h2>
                 {% if target_data is not none %}
-                    <p><strong>Opportunity Score:</strong> {{ "%.2f"|format(target_data.opportunity_score) }}</p>
-                    <p><strong>Population:</strong> {{ "{:,}".format(target_data.population_proper|int) }}</p>
-                    <p><strong>Housing Units:</strong> {{ "{:,}".format(target_data.housing_units|int) }}</p>
-                    <p><strong>Home Value:</strong> ${{ "{:,}".format(target_data.home_value|int) }}</p>
-                    <p><strong>Opportunity Category:</strong> {{ target_data.opportunity_category }}</p>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="flex flex-col items-center">
+                        <p class="font-semibold text-lg mb-2">Opportunity Score:</p>
+                        <div class="star-rating" data-rating="{{ target_data.opportunity_score * 5 }}"></div>
+                    </div>
+                    <div class="space-y-2">
+                        <p><span class="font-semibold">Population:</span> {{ "{:,}".format(target_data.population_proper|int) }}</p>
+                        <p><span class="font-semibold">Housing Units:</span> {{ "{:,}".format(target_data.housing_units|int) }}</p>
+                        <p><span class="font-semibold">Home Value:</span> ${{ "{:,}".format(target_data.home_value|int) }}</p>
+                        <p><span class="font-semibold">Opportunity Category:</span> 
+                            <span class="px-2 py-1 rounded-full text-sm 
+                                {% if target_data.opportunity_category == 'High' %}
+                                    bg-green-200 text-green-800
+                                {% elif target_data.opportunity_category == 'Average' %}
+                                    bg-yellow-200 text-yellow-800
+                                {% else %}
+                                    bg-red-200 text-red-800
+                                {% endif %}
+                            ">
+                                {{ target_data.opportunity_category }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
                 {% else %}
-                    <p>No specific data available for the target market.</p>
+                <p class="text-gray-600 italic">No specific data available for the target market.</p>
                 {% endif %}
             </div>
-            <div class="bg-white shadow-md rounded p-6">
-                <h2 class="text-xl font-semibold mb-4">Market Map</h2>
+            <div class="bg-white shadow-lg rounded-xl p-8 transition duration-300 ease-in-out hover:shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-indigo-800">Market Map</h2>
                 {{ map_html|safe }}
             </div>
         </div>
-        
-        <div class="bg-white shadow-md rounded p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Similar Markets</h2>
-            <table id="similarMarketsTable" class="display w-full">
-                <thead>
-                    <tr>
-                        <th>City</th>
-                        <th>Population</th>
-                        <th>Housing Units</th>
-                        <th>Home Value</th>
-                        <th>Organic Users</th>
-                        <th>Organic CVR</th>
-                        <th>Organic Leads</th>
-                        <th>Paid Users</th>
-                        <th>Paid CVR</th>
-                        <th>Paid Leads</th>
-                        <th>Distance (miles)</th>
-                        <th>Opportunity Score</th>
-                        <th>Opportunity Category</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for idx, row in similar_cities.iterrows() %}
-                    <tr>
-                        <td>{{ idx }}</td>
-                        <td>{{ "{:,}".format(row['population_proper']|int) }}</td>
-                        <td>{{ "{:,}".format(row['housing_units']|int) }}</td>
-                        <td>${{ "{:,}".format(row['home_value']|int) }}</td>
-                        <td>{{ "{:,}".format(row['users_org']|int) }}</td>
-                        <td>
-                            {% if row['cvr_org'] is not none and row['cvr_org']|float > 0 %}
-                                {{ "%.2f%%"|format(row['cvr_org']|float * 100) }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if row['leads_cvr'] is not none and row['leads_cvr']|float > 0 %}
-                                {{ "{:,}".format(row['leads_cvr']|int) }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>{{ "{:,}".format(row['users_paid']|int) }}</td>
-                        <td>
-                            {% if row['cvr_paid'] is not none and row['cvr_paid']|float > 0 %}
-                                {{ "%.2f%%"|format(row['cvr_paid']|float * 100) }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if row['leads_paid'] is not none and row['leads_paid']|float > 0 %}
-                                {{ "{:,}".format(row['leads_paid']|int) }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>{{ "%.1f"|format(row['distance_to_target']|float) }}</td>
-                        <td>{{ "%.2f"|format(row['opportunity_score']|float) }}</td>
-                        <td>{{ row['opportunity_category'] }}</td>
-                    </tr>
+
+        <div class="bg-white shadow-lg rounded-xl p-8 mb-12 transition duration-300 ease-in-out hover:shadow-xl">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-800">Similar Markets</h2>
+            
+            <div class="mb-8">
+                <h3 class="text-xl font-bold mb-4 text-green-600">High Opportunity Markets</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for city in similar_cities if city.opportunity_category == 'High' %}
+                    <div class="bg-green-50 rounded-lg p-6 shadow-md hover:shadow-lg transition duration-300">
+                        <h4 class="font-bold text-lg mb-3 text-green-800">{{ city.city }}</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <p><span class="font-semibold">Population:</span> {{ "{:,}".format(city.population_proper|int) }}</p>
+                                <p><span class="font-semibold">Housing Units:</span> {{ "{:,}".format(city.housing_units|int) }}</p>
+                                <p><span class="font-semibold">Home Value:</span> ${{ "{:,}".format(city.home_value|int) }}</p>
+                            </div>
+                            <div>
+                                <p><span class="font-semibold">Organic CVR:</span> {{ "%.2f%%" | format(city.cvr_org * 100) if city.cvr_org is not none and city.cvr_org > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Organic Leads:</span> {{ "{:,}".format(city.leads_org|int) if city.leads_org is not none and city.leads_org > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Paid CVR:</span> {{ "%.2f%%" | format(city.cvr_paid * 100) if city.cvr_paid is not none and city.cvr_paid > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Paid Leads:</span> {{ "{:,}".format(city.leads_paid|int) if city.leads_paid is not none and city.leads_paid > 0 else 'N/A' }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <p><span class="font-semibold">Distance:</span> {{ "%.1f" | format(city.distance_to_target) }} miles</p>
+                            <p><span class="font-semibold">Opportunity Score:</span></p>
+                            <div class="star-rating" data-rating="{{ city.opportunity_score * 5 }}"></div>
+                        </div>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            </div>
+            
+            <div>
+                <h3 class="text-xl font-bold mb-4 text-yellow-600">Average Opportunity Markets</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for city in similar_cities if city.opportunity_category == 'Average' %}
+                    <div class="bg-yellow-50 rounded-lg p-6 shadow-md hover:shadow-lg transition duration-300">
+                        <h4 class="font-bold text-lg mb-3 text-yellow-800">{{ city.city }}</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <p><span class="font-semibold">Population:</span> {{ "{:,}".format(city.population_proper|int) }}</p>
+                                <p><span class="font-semibold">Housing Units:</span> {{ "{:,}".format(city.housing_units|int) }}</p>
+                                <p><span class="font-semibold">Home Value:</span> ${{ "{:,}".format(city.home_value|int) }}</p>
+                            </div>
+                            <div>
+                                <p><span class="font-semibold">Organic CVR:</span> {{ "%.2f%%" | format(city.cvr_org * 100) if city.cvr_org is not none and city.cvr_org > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Organic Leads:</span> {{ "{:,}".format(city.leads_org|int) if city.leads_org is not none and city.leads_org > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Paid CVR:</span> {{ "%.2f%%" | format(city.cvr_paid * 100) if city.cvr_paid is not none and city.cvr_paid > 0 else 'N/A' }}</p>
+                                <p><span class="font-semibold">Paid Leads:</span> {{ "{:,}".format(city.leads_paid|int) if city.leads_paid is not none and city.leads_paid > 0 else 'N/A' }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <p><span class="font-semibold">Distance:</span> {{ "%.1f" | format(city.distance_to_target) }} miles</p>
+                            <p><span class="font-semibold">Opportunity Score:</span></p>
+                            <div class="star-rating" data-rating="{{ city.opportunity_score * 5 }}"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-        
-        <div class="mt-8 text-center">
-            <a href="{{ url_for('index') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+
+        <div class="mb-12 text-center">
+            <button id="showComponents" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+                Show Score Components
+            </button>
+        </div>
+
+        <div id="scoreComponents" class="hidden bg-white shadow-lg rounded-xl p-8 mb-12 transition duration-300 ease-in-out hover:shadow-xl">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-800">Opportunity Score Components</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-indigo-100 text-indigo-800">
+                            <th class="px-4 py-3">City</th>
+                            <th class="px-4 py-3">Similarity Score</th>
+                            <th class="px-4 py-3">Performance Difference</th>
+                            <th class="px-4 py-3">Network Penetration</th>
+                            <th class="px-4 py-3">Engagement Diversity</th>
+                            <th class="px-4 py-3">Growth Potential</th>
+                            <th class="px-4 py-3">Performance Efficiency</th>
+                            <th class="px-4 py-3">Saturation Risk</th>
+                            <th class="px-4 py-3">Raw Opportunity Score</th>
+                            <th class="px-4 py-3">Final Opportunity Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for city in similar_cities %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="border-b border-gray-200 px-4 py-3">{{ city.city }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.norm_similarity|float) if city.norm_similarity is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.performance_diff|float) if city.performance_diff is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.network_penetration|float) if city.network_penetration is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.engagement_diversity|float) if city.engagement_diversity is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.growth_potential|float) if city.growth_potential is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.performance_efficiency|float) if city.performance_efficiency is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.saturation_risk|float) if city.saturation_risk is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.raw_opportunity_score|float) if city.raw_opportunity_score is defined else 'N/A' }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ "%.4f"|format(city.opportunity_score|float) if city.opportunity_score is defined else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-12 text-center">
+            <a href="{{ url_for('index') }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
                 Analyze Another Market
             </a>
         </div>
     </div>
-    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#similarMarketsTable').DataTable({
-                order: [[11, 'desc']], // Sort by Opportunity Score descending
-                pageLength: 15, // Show 15 entries per page
-                lengthMenu: [[15, 25, 50, -1], [15, 25, 50, "All"]]
-            });
+        document.getElementById('showComponents').addEventListener('click', function() {
+            var componentsTable = document.getElementById('scoreComponents');
+            if (componentsTable.classList.contains('hidden')) {
+                componentsTable.classList.remove('hidden');
+                this.textContent = 'Hide Score Components';
+            } else {
+                componentsTable.classList.add('hidden');
+                this.textContent = 'Show Score Components';
+            }
+        });
+
+        function createStarRating(element) {
+            const rating = parseFloat(element.dataset.rating);
+            const fullStars = Math.floor(rating);
+            const halfStar = rating % 1 >= 0.5;
+            const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+            for (let i = 0; i < fullStars; i++) {
+                element.innerHTML += '<i class="fas fa-star text-yellow-400"></i>';
+            }
+            if (halfStar) {
+                element.innerHTML += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
+            }
+            for (let i = 0; i < emptyStars; i++) {
+                element.innerHTML += '<i class="far fa-star text-yellow-400"></i>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.star-rating').forEach(createStarRating);
         });
     </script>
 </body>

@@ -71,9 +71,16 @@ def analyze():
                                similar_cities=similar_cities_list,
                                map_html=map_html,
                                market_tags=MARKET_TAGS)  # Pass MARKET_TAGS to the template
+    except ValueError as e:
+        if "not found in the dataset" in str(e):
+            app.logger.warning(f"City not found: {target_city}, {target_state}")
+            return render_template('cityerror.html', city=target_city, state=target_state)
+        else:
+            app.logger.error(f"Error in analyze route: {str(e)}", exc_info=True)
+            return render_template('cityerror.html', error_message=str(e))
     except Exception as e:
         app.logger.error(f"Error in analyze route: {str(e)}", exc_info=True)
-        return render_template('error.html', error_message=str(e))
+        return render_template('cityerror.html', error_message=str(e))
 
 @app.errorhandler(404)
 def page_not_found(e):

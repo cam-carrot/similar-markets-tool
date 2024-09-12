@@ -49,10 +49,11 @@ def analyze():
     try:
         target_city = request.form['city']
         target_state = request.form['state']
+        radius = int(request.form['radius'])  # Get the radius from the form
         
-        app.logger.info(f"Analyzing market for {target_city}, {target_state}")
+        app.logger.info(f"Analyzing market for {target_city}, {target_state} with radius {radius} miles")
         
-        similar_cities = engine.find_similar_cities(target_city, target_state)
+        similar_cities = engine.find_similar_cities(target_city, target_state, radius_miles=radius)
         app.logger.info(f"Found {len(similar_cities)} similar cities")
         
         # Convert DataFrame to list of dictionaries

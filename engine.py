@@ -240,12 +240,22 @@ class MarketAnalysisEngine:
         df['performance_diff'] = (df[std_ga4_columns] - avg_performance).mean(axis=1)
 
         # New calculations
-        df['network_penetration'] = df['unique_sites'] / df['housing_units']
-        df['engagement_diversity'] = df['unique_sites'] / (df['users_org'] + df['users_paid'])
+        # Scale network penetration to a more meaningful range
+        df['network_penetration'] = (df['unique_sites'] / df['housing_units']) * 100  # Scale by 100 for better representation
+        
+        # Ensure engagement_diversity does not divide by zero
+        df['engagement_diversity'] = df['unique_sites'] / (df['users_org'] + df['users_paid'] + 1)  # Add 1 to avoid division by zero
+        
         avg_penetration = df['network_penetration'].mean()
         df['growth_potential'] = (avg_penetration - df['network_penetration']) / avg_penetration
-        df['performance_efficiency'] = (df['leads_org'] + df['leads_paid']) / df['unique_sites']
-        df['saturation_risk'] = 1 - (1 / (1 + np.exp(-(df['unique_sites'] - df['housing_units']/1000))))
+        
+        # Ensure performance_efficiency does not divide by zero
+        df['performance_efficiency'] = (df['leads_org'] + df['leads_paid']) / (df['unique_sites'] + 1)  # Add 1 to avoid division by zero
+        
+        # Adjust saturation risk calculation using logarithmic transformation
+        df['log_unique_sites'] = np.log1p(df['unique_sites'])  # log1p to handle zero values
+        df['log_housing_units'] = np.log1p(df['housing_units'])  # log1p to handle zero values
+        df['saturation_risk'] = 1 - (1 / (1 + np.exp(-(df['log_unique_sites'] - df['log_housing_units']))))  # Adjust scaling factor
 
         # Normalize similarity score (existing code)
         if df['similarity_score'].isna().all():

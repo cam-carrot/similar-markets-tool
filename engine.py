@@ -266,12 +266,12 @@ class MarketAnalysisEngine:
 
         # Calculate the raw opportunity score
         df['raw_opportunity_score'] = (
-            0.3 * df['norm_similarity'] +
-            0.2 * (1 - df['performance_diff']) +
-            0.1 * df['network_penetration'] +
+            0.15 * df['norm_similarity'] +
+            0.25 * (1 - df['performance_diff']) +
+            0.15 * df['network_penetration'] +
             0.1 * df['engagement_diversity'] +
-            0.1 * df['growth_potential'] +
-            0.1 * df['performance_efficiency'] +
+            0.20 * df['growth_potential'] +
+            0.05 * df['performance_efficiency'] +
             0.1 * (1 - df['saturation_risk'])
         )
 
